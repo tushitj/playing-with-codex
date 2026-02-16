@@ -1,0 +1,975 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Multi-Language Flashcards</title>
+  <style>
+    :root {
+      --bg: #f6f5f2;
+      --ink: #1b1b1b;
+      --muted: #6b6b6b;
+      --card: #ffffff;
+      --accent: #0f766e;
+      --accent-2: #e11d48;
+      --shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+      --radius: 16px;
+      --grid-gap: 16px;
+      --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      --sans: "Space Grotesk", "Avenir Next", "Segoe UI", system-ui, -apple-system, sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: var(--sans);
+      color: var(--ink);
+      background: radial-gradient(1200px 600px at 10% -10%, #e7f8f6 0%, transparent 50%),
+                  radial-gradient(900px 600px at 90% 0%, #fde7ee 0%, transparent 50%),
+                  var(--bg);
+      min-height: 100vh;
+    }
+
+    .page {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 40px 20px 80px;
+    }
+
+    header {
+      display: grid;
+      gap: 12px;
+      margin-bottom: 28px;
+    }
+
+    h1 {
+      font-size: clamp(2rem, 4vw, 3.2rem);
+      letter-spacing: -0.02em;
+      margin: 0;
+    }
+
+    .sub {
+      color: var(--muted);
+      max-width: 720px;
+      line-height: 1.6;
+    }
+
+    .panel {
+      background: rgba(255, 255, 255, 0.85);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(0, 0, 0, 0.06);
+      box-shadow: var(--shadow);
+      border-radius: var(--radius);
+      padding: 22px;
+      display: grid;
+      gap: 16px;
+    }
+
+    .input-row {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .input-row input {
+      flex: 1 1 360px;
+      padding: 14px 16px;
+      border-radius: 12px;
+      border: 1px solid rgba(0, 0, 0, 0.12);
+      font-size: 1rem;
+      font-family: var(--sans);
+      background: #fff;
+      transition: border 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .input-row input:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.15);
+    }
+
+    .btn {
+      appearance: none;
+      border: none;
+      border-radius: 12px;
+      padding: 12px 18px;
+      font-weight: 600;
+      font-family: var(--sans);
+      cursor: pointer;
+      transition: transform 0.15s ease, box-shadow 0.2s ease, background 0.2s ease;
+    }
+
+    .btn.primary {
+      background: var(--accent);
+      color: white;
+      box-shadow: 0 12px 20px rgba(15, 118, 110, 0.2);
+    }
+
+    .btn.primary:hover {
+      transform: translateY(-1px);
+    }
+
+    .btn.ghost {
+      background: transparent;
+      color: var(--ink);
+      border: 1px solid rgba(0, 0, 0, 0.12);
+    }
+
+    .status {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+
+    .language-dropdown {
+      position: relative;
+    }
+
+    .language-dropdown summary {
+      list-style: none;
+    }
+
+    .language-dropdown summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .language-panel {
+      margin-top: 10px;
+      background: #fff;
+      border-radius: 14px;
+      border: 1px solid rgba(0, 0, 0, 0.1);
+      box-shadow: var(--shadow);
+      padding: 12px;
+      display: grid;
+      gap: 10px;
+    }
+
+    .language-panel input {
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px solid rgba(0, 0, 0, 0.12);
+      font-size: 0.95rem;
+      font-family: var(--sans);
+    }
+
+    .language-list {
+      max-height: 220px;
+      overflow: auto;
+      display: grid;
+      gap: 8px;
+    }
+
+    .language-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border-radius: 10px;
+      padding: 8px 10px;
+      border: 1px solid rgba(0, 0, 0, 0.08);
+      background: #fafafa;
+      cursor: pointer;
+      user-select: none;
+      transition: border 0.2s ease, transform 0.15s ease, box-shadow 0.2s ease;
+      font-size: 0.9rem;
+    }
+
+    .language-item input {
+      accent-color: var(--accent);
+    }
+
+    .language-item.active {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.1);
+      transform: translateY(-1px);
+      background: #f4fffd;
+    }
+
+    .language-code {
+      margin-left: auto;
+      font-size: 0.75rem;
+      font-family: var(--mono);
+      color: var(--muted);
+    }
+
+    .language-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 0 6px rgba(15, 118, 110, 0.1);
+      animation: pulse 1.6s infinite;
+    }
+
+    @keyframes pulse {
+      0% { transform: scale(0.9); opacity: 0.6; }
+      50% { transform: scale(1.1); opacity: 1; }
+      100% { transform: scale(0.9); opacity: 0.6; }
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: var(--grid-gap);
+      margin-top: 16px;
+    }
+
+    .card {
+      position: relative;
+      border-radius: 18px;
+      padding: 18px;
+      background: var(--card);
+      box-shadow: var(--shadow);
+      transform-style: preserve-3d;
+      transition: transform 0.5s ease, box-shadow 0.2s ease;
+      min-height: 200px;
+      overflow: visible;
+    }
+
+    .card:hover {
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.12);
+    }
+
+    .card-inner {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      transform-style: preserve-3d;
+      transition: transform 0.6s ease;
+    }
+
+    .card.flipped .card-inner {
+      transform: rotateY(180deg);
+    }
+
+    .card-face {
+      position: absolute;
+      inset: 0;
+      backface-visibility: hidden;
+      display: grid;
+      gap: 10px;
+    }
+
+    .card-face.back {
+      transform: rotateY(180deg);
+      align-content: center;
+      text-align: center;
+    }
+
+    .lang {
+      font-size: 1.05rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .translation {
+      font-size: 1.2rem;
+      line-height: 1.4;
+      word-break: break-word;
+    }
+
+    .badge {
+      font-size: 0.75rem;
+      letter-spacing: 0.04em;
+      color: rgba(0, 0, 0, 0.6);
+      text-transform: uppercase;
+    }
+
+    .card-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 6px;
+      flex-wrap: wrap;
+    }
+
+    .card-actions .btn {
+      padding: 8px 12px;
+      font-size: 0.85rem;
+    }
+
+    .error {
+      color: var(--accent-2);
+      font-weight: 600;
+    }
+
+    .deck {
+      margin-top: 32px;
+    }
+
+    .deck-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+
+    .deck-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .deck-item {
+      background: #fff;
+      border-radius: 12px;
+      padding: 12px 14px;
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: var(--shadow);
+      border: 1px solid rgba(0, 0, 0, 0.06);
+    }
+
+    .deck-item span {
+      font-size: 0.95rem;
+    }
+
+    .chip {
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      background: rgba(15, 118, 110, 0.12);
+      color: var(--accent);
+      font-weight: 600;
+    }
+
+    .fade-in {
+      animation: fadeInUp 0.4s ease both;
+    }
+
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @media (max-width: 640px) {
+      .input-row {
+        flex-direction: column;
+      }
+
+      .deck-item {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .card {
+        min-height: 220px;
+      }
+
+      .card-actions .btn {
+        width: 100%;
+        justify-content: center;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header>
+      <h1>Multi-Language Flashcards</h1>
+      <p class="sub">Type an English word or phrase, then generate flashcards in five languages. Flip each card to quiz yourself and save favorites to your personal deck.</p>
+    </header>
+
+    <section class="panel">
+      <div class="input-row">
+        <input id="inputText" type="text" placeholder="Enter an English word or phrase..." autocomplete="off" />
+        <button id="translateBtn" class="btn primary">Translate</button>
+        <button id="clearBtn" class="btn ghost">Clear</button>
+      </div>
+      <details class="language-dropdown" id="languageDropdown">
+        <summary class="btn ghost" id="languageToggle">Languages</summary>
+        <div class="language-panel">
+          <input id="languageSearch" type="text" placeholder="Search languages..." autocomplete="off" />
+          <div class="language-list" id="languageList"></div>
+          <div class="language-actions">
+            <button id="selectAllBtn" class="btn ghost">Select All</button>
+            <button id="selectNoneBtn" class="btn ghost">Select None</button>
+          </div>
+        </div>
+      </details>
+      <div class="status" id="statusArea">
+        <span class="dot" id="statusDot"></span>
+        <span id="statusText">Loading translation model...</span>
+      </div>
+      <div id="errorArea" class="error"></div>
+      <div id="cards" class="grid"></div>
+    </section>
+
+    <section class="deck" id="deckSection">
+      <div class="deck-header">
+        <h2>Saved Deck</h2>
+        <div class="deck-controls">
+          <button id="exportBtn" class="btn ghost">Export JSON</button>
+          <button id="clearDeckBtn" class="btn ghost">Clear Deck</button>
+        </div>
+      </div>
+      <div id="deckList" class="deck-list"></div>
+    </section>
+  </div>
+
+  <script type="module">
+    import { pipeline, env } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2';
+
+    const MODEL_NAME = 'Xenova/nllb-200-distilled-600M';
+    const DEFAULT_SELECTED_CODES = new Set([
+      'spa_Latn',
+      'fra_Latn',
+      'deu_Latn',
+      'hin_Deva',
+      'tel_Telu'
+    ]);
+    const EMOJI_BY_CODE = {
+      spa_Latn: '🇪🇸',
+      fra_Latn: '🇫🇷',
+      deu_Latn: '🇩🇪',
+      hin_Deva: '🇮🇳',
+      tel_Telu: '🇮🇳'
+    };
+    const COLOR_BY_CODE = {
+      spa_Latn: '#fff4e6',
+      fra_Latn: '#e7f5ff',
+      deu_Latn: '#fef3c7',
+      hin_Deva: '#ffe4e6',
+      tel_Telu: '#ecfdf3'
+    };
+    const DEFAULT_CARD_COLOR = '#ffffff';
+    const ALL_LANGUAGES = [
+      { code: "ace_Arab", name: "Acehnese (Arabic script)" },
+      { code: "ace_Latn", name: "Acehnese (Latin script)" },
+      { code: "acm_Arab", name: "Mesopotamian Arabic" },
+      { code: "acq_Arab", name: "Ta'izzi-Adeni Arabic" },
+      { code: "aeb_Arab", name: "Tunisian Arabic" },
+      { code: "afr_Latn", name: "Afrikaans" },
+      { code: "ajp_Arab", name: "South Levantine Arabic" },
+      { code: "aka_Latn", name: "Akan" },
+      { code: "amh_Ethi", name: "Amharic" },
+      { code: "apc_Arab", name: "North Levantine Arabic" },
+      { code: "arb_Arab", name: "Modern Standard Arabic" },
+      { code: "arb_Latn", name: "Modern Standard Arabic (Romanized)" },
+      { code: "ars_Arab", name: "Najdi Arabic" },
+      { code: "ary_Arab", name: "Moroccan Arabic" },
+      { code: "arz_Arab", name: "Egyptian Arabic" },
+      { code: "asm_Beng", name: "Assamese" },
+      { code: "ast_Latn", name: "Asturian" },
+      { code: "awa_Deva", name: "Awadhi" },
+      { code: "ayr_Latn", name: "Central Aymara" },
+      { code: "azb_Arab", name: "South Azerbaijani" },
+      { code: "azj_Latn", name: "North Azerbaijani" },
+      { code: "bak_Cyrl", name: "Bashkir" },
+      { code: "bam_Latn", name: "Bambara" },
+      { code: "ban_Latn", name: "Balinese" },
+      { code: "bel_Cyrl", name: "Belarusian" },
+      { code: "bem_Latn", name: "Bemba" },
+      { code: "ben_Beng", name: "Bengali" },
+      { code: "bho_Deva", name: "Bhojpuri" },
+      { code: "bjn_Arab", name: "Banjar (Arabic script)" },
+      { code: "bjn_Latn", name: "Banjar (Latin script)" },
+      { code: "bod_Tibt", name: "Standard Tibetan" },
+      { code: "bos_Latn", name: "Bosnian" },
+      { code: "bug_Latn", name: "Buginese" },
+      { code: "bul_Cyrl", name: "Bulgarian" },
+      { code: "cat_Latn", name: "Catalan" },
+      { code: "ceb_Latn", name: "Cebuano" },
+      { code: "ces_Latn", name: "Czech" },
+      { code: "cjk_Latn", name: "Chokwe" },
+      { code: "ckb_Arab", name: "Central Kurdish" },
+      { code: "crh_Latn", name: "Crimean Tatar" },
+      { code: "cym_Latn", name: "Welsh" },
+      { code: "dan_Latn", name: "Danish" },
+      { code: "deu_Latn", name: "German" },
+      { code: "dik_Latn", name: "Southwestern Dinka" },
+      { code: "dyu_Latn", name: "Dyula" },
+      { code: "dzo_Tibt", name: "Dzongkha" },
+      { code: "ell_Grek", name: "Greek" },
+      { code: "epo_Latn", name: "Esperanto" },
+      { code: "est_Latn", name: "Estonian" },
+      { code: "eus_Latn", name: "Basque" },
+      { code: "ewe_Latn", name: "Ewe" },
+      { code: "fao_Latn", name: "Faroese" },
+      { code: "fij_Latn", name: "Fijian" },
+      { code: "fin_Latn", name: "Finnish" },
+      { code: "fon_Latn", name: "Fon" },
+      { code: "fra_Latn", name: "French" },
+      { code: "fur_Latn", name: "Friulian" },
+      { code: "fuv_Latn", name: "Nigerian Fulfulde" },
+      { code: "gla_Latn", name: "Scottish Gaelic" },
+      { code: "gle_Latn", name: "Irish" },
+      { code: "glg_Latn", name: "Galician" },
+      { code: "grn_Latn", name: "Guarani" },
+      { code: "guj_Gujr", name: "Gujarati" },
+      { code: "hat_Latn", name: "Haitian Creole" },
+      { code: "hau_Latn", name: "Hausa" },
+      { code: "heb_Hebr", name: "Hebrew" },
+      { code: "hin_Deva", name: "Hindi" },
+      { code: "hne_Deva", name: "Chhattisgarhi" },
+      { code: "hrv_Latn", name: "Croatian" },
+      { code: "hun_Latn", name: "Hungarian" },
+      { code: "hye_Armn", name: "Armenian" },
+      { code: "ibo_Latn", name: "Igbo" },
+      { code: "ilo_Latn", name: "Ilocano" },
+      { code: "ind_Latn", name: "Indonesian" },
+      { code: "isl_Latn", name: "Icelandic" },
+      { code: "ita_Latn", name: "Italian" },
+      { code: "jav_Latn", name: "Javanese" },
+      { code: "jpn_Jpan", name: "Japanese" },
+      { code: "kab_Latn", name: "Kabyle" },
+      { code: "kac_Latn", name: "Jingpho" },
+      { code: "kam_Latn", name: "Kamba" },
+      { code: "kan_Knda", name: "Kannada" },
+      { code: "kas_Arab", name: "Kashmiri (Arabic script)" },
+      { code: "kas_Deva", name: "Kashmiri (Devanagari script)" },
+      { code: "kat_Geor", name: "Georgian" },
+      { code: "knc_Arab", name: "Central Kanuri (Arabic script)" },
+      { code: "knc_Latn", name: "Central Kanuri (Latin script)" },
+      { code: "kaz_Cyrl", name: "Kazakh" },
+      { code: "kbp_Latn", name: "Kabiye" },
+      { code: "kea_Latn", name: "Kabuverdianu" },
+      { code: "khm_Khmr", name: "Khmer" },
+      { code: "kik_Latn", name: "Kikuyu" },
+      { code: "kin_Latn", name: "Kinyarwanda" },
+      { code: "kir_Cyrl", name: "Kyrgyz" },
+      { code: "kmb_Latn", name: "Kimbundu" },
+      { code: "kmr_Latn", name: "Northern Kurdish" },
+      { code: "kon_Latn", name: "Kikongo" },
+      { code: "kor_Hang", name: "Korean" },
+      { code: "lao_Laoo", name: "Lao" },
+      { code: "lij_Latn", name: "Ligurian" },
+      { code: "lim_Latn", name: "Limburgish" },
+      { code: "lin_Latn", name: "Lingala" },
+      { code: "lit_Latn", name: "Lithuanian" },
+      { code: "lmo_Latn", name: "Lombard" },
+      { code: "ltg_Latn", name: "Latgalian" },
+      { code: "ltz_Latn", name: "Luxembourgish" },
+      { code: "lua_Latn", name: "Luba-Kasai" },
+      { code: "lug_Latn", name: "Ganda" },
+      { code: "luo_Latn", name: "Luo" },
+      { code: "lus_Latn", name: "Mizo" },
+      { code: "lvs_Latn", name: "Latvian" },
+      { code: "mag_Deva", name: "Magahi" },
+      { code: "mai_Deva", name: "Maithili" },
+      { code: "mal_Mlym", name: "Malayalam" },
+      { code: "mar_Deva", name: "Marathi" },
+      { code: "min_Latn", name: "Minangkabau" },
+      { code: "mkd_Cyrl", name: "Macedonian" },
+      { code: "plt_Latn", name: "Plateau Malagasy" },
+      { code: "mlt_Latn", name: "Maltese" },
+      { code: "mni_Beng", name: "Meitei (Bengali script)" },
+      { code: "khk_Cyrl", name: "Halh Mongolian" },
+      { code: "mos_Latn", name: "Mossi" },
+      { code: "mri_Latn", name: "Maori" },
+      { code: "mya_Mymr", name: "Burmese" },
+      { code: "nld_Latn", name: "Dutch" },
+      { code: "nno_Latn", name: "Norwegian Nynorsk" },
+      { code: "nob_Latn", name: "Norwegian Bokmal" },
+      { code: "npi_Deva", name: "Nepali" },
+      { code: "nso_Latn", name: "Northern Sotho" },
+      { code: "nus_Latn", name: "Nuer" },
+      { code: "nya_Latn", name: "Nyanja" },
+      { code: "oci_Latn", name: "Occitan" },
+      { code: "gaz_Latn", name: "West Central Oromo" },
+      { code: "ory_Orya", name: "Odia" },
+      { code: "pan_Guru", name: "Punjabi" },
+      { code: "pap_Latn", name: "Papiamento" },
+      { code: "pes_Arab", name: "Western Persian" },
+      { code: "pol_Latn", name: "Polish" },
+      { code: "por_Latn", name: "Portuguese" },
+      { code: "prs_Arab", name: "Dari" },
+      { code: "pbt_Arab", name: "Southern Pashto" },
+      { code: "quy_Latn", name: "Ayacucho Quechua" },
+      { code: "ron_Latn", name: "Romanian" },
+      { code: "run_Latn", name: "Rundi" },
+      { code: "rus_Cyrl", name: "Russian" },
+      { code: "sag_Latn", name: "Sango" },
+      { code: "san_Deva", name: "Sanskrit" },
+      { code: "sat_Beng", name: "Santali" },
+      { code: "scn_Latn", name: "Sicilian" },
+      { code: "shn_Mymr", name: "Shan" },
+      { code: "sin_Sinh", name: "Sinhala" },
+      { code: "slk_Latn", name: "Slovak" },
+      { code: "slv_Latn", name: "Slovenian" },
+      { code: "smo_Latn", name: "Samoan" },
+      { code: "sna_Latn", name: "Shona" },
+      { code: "snd_Arab", name: "Sindhi" },
+      { code: "som_Latn", name: "Somali" },
+      { code: "sot_Latn", name: "Southern Sotho" },
+      { code: "spa_Latn", name: "Spanish" },
+      { code: "als_Latn", name: "Tosk Albanian" },
+      { code: "srd_Latn", name: "Sardinian" },
+      { code: "srp_Cyrl", name: "Serbian" },
+      { code: "ssw_Latn", name: "Swati" },
+      { code: "sun_Latn", name: "Sundanese" },
+      { code: "swe_Latn", name: "Swedish" },
+      { code: "swh_Latn", name: "Swahili" },
+      { code: "szl_Latn", name: "Silesian" },
+      { code: "tam_Taml", name: "Tamil" },
+      { code: "tat_Cyrl", name: "Tatar" },
+      { code: "tel_Telu", name: "Telugu" },
+      { code: "tgk_Cyrl", name: "Tajik" },
+      { code: "tgl_Latn", name: "Tagalog" },
+      { code: "tha_Thai", name: "Thai" },
+      { code: "tir_Ethi", name: "Tigrinya" },
+      { code: "taq_Latn", name: "Tamasheq (Latin script)" },
+      { code: "taq_Tfng", name: "Tamasheq (Tifinagh script)" },
+      { code: "tpi_Latn", name: "Tok Pisin" },
+      { code: "tsn_Latn", name: "Tswana" },
+      { code: "tso_Latn", name: "Tsonga" },
+      { code: "tuk_Latn", name: "Turkmen" },
+      { code: "tum_Latn", name: "Tumbuka" },
+      { code: "tur_Latn", name: "Turkish" },
+      { code: "twi_Latn", name: "Twi" },
+      { code: "tzm_Tfng", name: "Central Atlas Tamazight" },
+      { code: "uig_Arab", name: "Uighur" },
+      { code: "ukr_Cyrl", name: "Ukrainian" },
+      { code: "umb_Latn", name: "Umbundu" },
+      { code: "urd_Arab", name: "Urdu" },
+      { code: "uzn_Latn", name: "Northern Uzbek" },
+      { code: "xho_Latn", name: "Xhosa" },
+      { code: "yor_Latn", name: "Yoruba" },
+      { code: "yue_Hant", name: "Yue Chinese" },
+      { code: "zho_Hans", name: "Chinese (Simplified)" },
+      { code: "zho_Hant", name: "Chinese (Traditional)" },
+      { code: "zsm_Latn", name: "Standard Malay" },
+      { code: "zul_Latn", name: "Zulu" }
+    ];
+
+    ALL_LANGUAGES.forEach((lang) => {
+      lang.emoji = EMOJI_BY_CODE[lang.code] || '🌐';
+      lang.color = COLOR_BY_CODE[lang.code] || DEFAULT_CARD_COLOR;
+    });
+
+    const state = {
+      translator: null,
+      loading: true,
+      deck: []
+    };
+
+    const els = {
+      input: document.getElementById('inputText'),
+      translateBtn: document.getElementById('translateBtn'),
+      clearBtn: document.getElementById('clearBtn'),
+      languageDropdown: document.getElementById('languageDropdown'),
+      languageToggle: document.getElementById('languageToggle'),
+      languageSearch: document.getElementById('languageSearch'),
+      languageList: document.getElementById('languageList'),
+      selectAllBtn: document.getElementById('selectAllBtn'),
+      selectNoneBtn: document.getElementById('selectNoneBtn'),
+      statusText: document.getElementById('statusText'),
+      statusDot: document.getElementById('statusDot'),
+      statusArea: document.getElementById('statusArea'),
+      errorArea: document.getElementById('errorArea'),
+      cards: document.getElementById('cards'),
+      deckList: document.getElementById('deckList'),
+      exportBtn: document.getElementById('exportBtn'),
+      clearDeckBtn: document.getElementById('clearDeckBtn')
+    };
+
+    const setStatus = (text, isLoading = false) => {
+      els.statusText.textContent = text;
+      els.statusDot.style.display = isLoading ? 'inline-block' : 'none';
+    };
+
+    const setError = (message = '') => {
+      els.errorArea.textContent = message;
+    };
+
+    const loadDeck = () => {
+      try {
+        const saved = JSON.parse(localStorage.getItem('flashcardDeck') || '[]');
+        state.deck = Array.isArray(saved) ? saved : [];
+      } catch (err) {
+        state.deck = [];
+      }
+      renderDeck();
+    };
+
+    const saveDeck = () => {
+      localStorage.setItem('flashcardDeck', JSON.stringify(state.deck));
+    };
+
+    const renderDeck = () => {
+      els.deckList.innerHTML = '';
+      if (state.deck.length === 0) {
+        const empty = document.createElement('div');
+        empty.textContent = 'No saved cards yet.';
+        empty.style.color = 'var(--muted)';
+        els.deckList.appendChild(empty);
+        return;
+      }
+
+      state.deck.forEach((item, index) => {
+        const row = document.createElement('div');
+        row.className = 'deck-item fade-in';
+        row.innerHTML = `
+          <div>
+            <span class="chip">${item.language}</span>
+            <span>${item.emoji} ${item.source} → ${item.translation}</span>
+          </div>
+          <button class="btn ghost" data-index="${index}">Delete</button>
+        `;
+        row.querySelector('button').addEventListener('click', () => {
+          state.deck.splice(index, 1);
+          saveDeck();
+          renderDeck();
+        });
+        els.deckList.appendChild(row);
+      });
+    };
+
+    const exportDeck = () => {
+      const payload = JSON.stringify(state.deck, null, 2);
+      const blob = new Blob([payload], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'flashcard-deck.json';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    };
+
+    const createCard = (lang, translation, sourceText) => {
+      const card = document.createElement('div');
+      card.className = 'card fade-in';
+      card.style.background = lang.color || DEFAULT_CARD_COLOR;
+      card.innerHTML = `
+        <div class="card-inner">
+          <div class="card-face front">
+            <div class="badge">Translation</div>
+            <div class="lang">${lang.emoji} ${lang.name}</div>
+            <div class="translation">${translation}</div>
+            <div class="card-actions">
+              <button class="btn ghost" data-action="flip">Flip</button>
+              <button class="btn primary" data-action="save">Add to Deck</button>
+            </div>
+          </div>
+          <div class="card-face back">
+            <div class="badge">Your prompt</div>
+            <div class="translation">${sourceText}</div>
+            <div class="card-actions">
+              <button class="btn ghost" data-action="flip">Flip Back</button>
+            </div>
+          </div>
+        </div>
+      `;
+
+      const toggleFlip = () => card.classList.toggle('flipped');
+      card.addEventListener('click', (event) => {
+        if (event.target.closest('[data-action="save"]')) return;
+        if (event.target.closest('a, button')) return;
+        toggleFlip();
+      });
+
+      card.querySelectorAll('[data-action="flip"]').forEach((btn) => {
+        btn.addEventListener('click', (event) => {
+          event.stopPropagation();
+          toggleFlip();
+        });
+      });
+
+      card.querySelector('[data-action="save"]').addEventListener('click', () => {
+        state.deck.unshift({
+          language: lang.name,
+          emoji: lang.emoji,
+          source: sourceText,
+          translation
+        });
+        saveDeck();
+        renderDeck();
+      });
+
+      return card;
+    };
+
+    const createLoadingCard = (lang) => {
+      const card = document.createElement('div');
+      card.className = 'card fade-in';
+      card.style.background = lang.color || DEFAULT_CARD_COLOR;
+      card.innerHTML = `
+        <div class="card-inner">
+          <div class="card-face front">
+            <div class="badge">Translation</div>
+            <div class="lang">${lang.emoji} ${lang.name}</div>
+            <div class="translation">Translating...</div>
+          </div>
+          <div class="card-face back">
+            <div class="badge">Your prompt</div>
+            <div class="translation">...</div>
+          </div>
+        </div>
+      `;
+      return card;
+    };
+
+    const getSelectedLanguages = () => ALL_LANGUAGES.filter((lang) => lang.selected);
+
+    const updateLanguageToggleLabel = () => {
+      const count = getSelectedLanguages().length;
+      els.languageToggle.textContent = `Languages (${count} selected)`;
+    };
+
+    const saveSelectedLanguages = () => {
+      const codes = getSelectedLanguages().map((lang) => lang.code);
+      localStorage.setItem('selectedLanguageCodes', JSON.stringify(codes));
+      updateLanguageToggleLabel();
+    };
+
+    const renderLanguageList = () => {
+      const query = els.languageSearch.value.trim().toLowerCase();
+      els.languageList.innerHTML = '';
+      const filtered = ALL_LANGUAGES.filter((lang) =>
+        lang.name.toLowerCase().includes(query) || lang.code.toLowerCase().includes(query)
+      );
+
+      if (filtered.length === 0) {
+        const empty = document.createElement('div');
+        empty.textContent = 'No matching languages.';
+        empty.style.color = 'var(--muted)';
+        els.languageList.appendChild(empty);
+        return;
+      }
+
+      filtered.forEach((lang) => {
+        const label = document.createElement('label');
+        label.className = `language-item ${lang.selected ? 'active' : ''}`;
+        label.innerHTML = `
+          <input type="checkbox" ${lang.selected ? 'checked' : ''} />
+          <span>${lang.emoji} ${lang.name}</span>
+          <span class="language-code">${lang.code}</span>
+        `;
+        const checkbox = label.querySelector('input');
+        checkbox.addEventListener('change', (event) => {
+          lang.selected = event.target.checked;
+          label.classList.toggle('active', event.target.checked);
+          saveSelectedLanguages();
+        });
+        els.languageList.appendChild(label);
+      });
+    };
+
+    const translateAll = async () => {
+      const text = els.input.value.trim();
+      if (!text) {
+        setError('Please enter an English word or phrase.');
+        return;
+      }
+
+      const selected = getSelectedLanguages();
+      if (selected.length === 0) {
+        setError('Select at least one language.');
+        return;
+      }
+
+      setError('');
+      els.cards.innerHTML = '';
+      setStatus('Translating...', true);
+      els.translateBtn.disabled = true;
+      els.translateBtn.textContent = 'Translating...';
+
+      const placeholders = selected.map((lang) => {
+        const card = createLoadingCard(lang);
+        els.cards.appendChild(card);
+        return card;
+      });
+
+      try {
+        const results = await Promise.all(selected.map(async (lang, index) => {
+          const output = await state.translator(text, { tgt_lang: lang.code, src_lang: 'eng_Latn' });
+          const translatedText = output?.[0]?.translation_text || 'No translation available';
+          return { lang, translatedText, index };
+        }));
+
+        results.forEach(({ lang, translatedText, index }) => {
+          const card = createCard(lang, translatedText, text);
+          placeholders[index].replaceWith(card);
+        });
+
+        setStatus('Ready.');
+      } catch (err) {
+        setStatus('Ready.');
+        console.error(err);
+        setError(`Translation failed. ${err?.message || 'Please try again.'}`);
+      } finally {
+        els.translateBtn.disabled = false;
+        els.translateBtn.textContent = 'Translate';
+      }
+    };
+
+    const init = async () => {
+      loadDeck();
+      setStatus('Loading translation model... This may take a minute on first run.', true);
+
+      try {
+        env.allowLocalModels = false;
+        env.useBrowserCache = true;
+        state.translator = await pipeline('translation', MODEL_NAME, { quantized: true });
+        state.loading = false;
+        setStatus('Ready.');
+      } catch (err) {
+        setStatus('Model failed to load.');
+        setError(`Unable to load the translation model. ${err?.message || 'Check your connection and refresh.'}`);
+      }
+    };
+
+    els.translateBtn.addEventListener('click', translateAll);
+    els.clearBtn.addEventListener('click', () => {
+      els.input.value = '';
+      els.cards.innerHTML = '';
+      setError('');
+    });
+    els.languageSearch.addEventListener('input', renderLanguageList);
+    els.selectAllBtn.addEventListener('click', () => {
+      ALL_LANGUAGES.forEach((lang) => (lang.selected = true));
+      saveSelectedLanguages();
+      renderLanguageList();
+    });
+    els.selectNoneBtn.addEventListener('click', () => {
+      ALL_LANGUAGES.forEach((lang) => (lang.selected = false));
+      saveSelectedLanguages();
+      renderLanguageList();
+    });
+    els.exportBtn.addEventListener('click', exportDeck);
+    els.clearDeckBtn.addEventListener('click', () => {
+      if (!confirm('Clear all saved cards?')) return;
+      state.deck = [];
+      saveDeck();
+      renderDeck();
+    });
+
+    try {
+      const savedCodes = JSON.parse(localStorage.getItem('selectedLanguageCodes') || '[]');
+      if (Array.isArray(savedCodes) && savedCodes.length > 0) {
+        const selectedSet = new Set(savedCodes);
+        ALL_LANGUAGES.forEach((lang) => {
+          lang.selected = selectedSet.has(lang.code);
+        });
+      } else {
+        ALL_LANGUAGES.forEach((lang) => {
+          lang.selected = DEFAULT_SELECTED_CODES.has(lang.code);
+        });
+      }
+    } catch (err) {
+      ALL_LANGUAGES.forEach((lang) => {
+        lang.selected = DEFAULT_SELECTED_CODES.has(lang.code);
+      });
+    }
+    updateLanguageToggleLabel();
+    renderLanguageList();
+    init();
+  </script>
+</body>
+</html>
