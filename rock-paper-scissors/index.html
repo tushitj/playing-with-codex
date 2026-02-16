@@ -1,0 +1,273 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Rock Paper Scissors</title>
+  <style>
+    :root {
+      --bg: #f4efe6;
+      --card: #fff9f0;
+      --text: #1f1c18;
+      --accent: #b04a2f;
+      --accent-2: #2f6a59;
+      --muted: #776f66;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Trebuchet MS", "Gill Sans", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 10% 20%, #f8d7a9 0, transparent 30%),
+        radial-gradient(circle at 85% 80%, #d4eadf 0, transparent 35%),
+        linear-gradient(160deg, #f6f0e4, #efe4d2);
+      display: grid;
+      place-items: center;
+      padding: 1rem;
+    }
+
+    .game {
+      width: min(680px, 100%);
+      background: var(--card);
+      border: 2px solid #e7d9c6;
+      border-radius: 18px;
+      padding: 1.5rem;
+      box-shadow: 0 12px 35px rgba(20, 16, 10, 0.15);
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(1.6rem, 4vw, 2.2rem);
+      letter-spacing: 0.03em;
+      text-align: center;
+    }
+
+    .subtitle {
+      margin: 0.35rem 0 1.25rem;
+      text-align: center;
+      color: var(--muted);
+    }
+
+    .choices {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 0.75rem;
+      margin-bottom: 1rem;
+    }
+
+    button {
+      border: none;
+      border-radius: 12px;
+      padding: 0.9rem;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform 120ms ease, opacity 120ms ease;
+    }
+
+    button:hover { transform: translateY(-2px); }
+    button:active { transform: translateY(0); opacity: 0.9; }
+
+    .pick {
+      background: #eadbc7;
+      color: var(--text);
+    }
+
+    .result {
+      border: 1px solid #e7d9c6;
+      border-radius: 12px;
+      padding: 0.9rem;
+      background: #fffdf9;
+      margin-bottom: 1rem;
+      min-height: 4.4rem;
+      display: grid;
+      gap: 0.35rem;
+      align-content: center;
+    }
+
+    .result strong {
+      font-size: 1.08rem;
+      color: var(--accent);
+    }
+
+    .scoreboard {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 0.6rem;
+      margin-bottom: 1rem;
+      text-align: center;
+    }
+
+    .score {
+      background: #f8efe2;
+      border: 1px solid #e7d9c6;
+      border-radius: 10px;
+      padding: 0.65rem 0.4rem;
+    }
+
+    .score .label {
+      display: block;
+      font-size: 0.8rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .score .value {
+      display: block;
+      margin-top: 0.3rem;
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: var(--accent-2);
+    }
+
+    .actions {
+      display: flex;
+      justify-content: flex-end;
+    }
+
+    .reset {
+      background: var(--accent);
+      color: #fff;
+      padding-inline: 1.1rem;
+    }
+
+    @media (max-width: 520px) {
+      .choices,
+      .scoreboard {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="game">
+    <h1>Rock–Paper–Scissors</h1>
+    <p class="subtitle">Pick your move. First win is immediate, but scores keep running.</p>
+
+    <section class="choices" aria-label="Move choices">
+      <button class="pick" data-choice="rock">Rock</button>
+      <button class="pick" data-choice="paper">Paper</button>
+      <button class="pick" data-choice="scissors">Scissors</button>
+    </section>
+
+    <section class="result" aria-live="polite">
+      <strong id="roundResult">Make your first move.</strong>
+      <span id="roundDetail">Scores are saved in your browser.</span>
+    </section>
+
+    <section class="scoreboard" aria-label="Scoreboard">
+      <div class="score"><span class="label">Wins</span><span class="value" id="wins">0</span></div>
+      <div class="score"><span class="label">Losses</span><span class="value" id="losses">0</span></div>
+      <div class="score"><span class="label">Ties</span><span class="value" id="ties">0</span></div>
+      <div class="score"><span class="label">Rounds</span><span class="value" id="rounds">0</span></div>
+    </section>
+
+    <div class="actions">
+      <button class="reset" id="resetBtn">Reset Score</button>
+    </div>
+  </main>
+
+  <script>
+    const STORAGE_KEY = "rps-score-v1";
+    const choices = ["rock", "paper", "scissors"];
+
+    const state = loadScore();
+
+    const winsEl = document.getElementById("wins");
+    const lossesEl = document.getElementById("losses");
+    const tiesEl = document.getElementById("ties");
+    const roundsEl = document.getElementById("rounds");
+    const roundResultEl = document.getElementById("roundResult");
+    const roundDetailEl = document.getElementById("roundDetail");
+
+    document.querySelectorAll(".pick").forEach((button) => {
+      button.addEventListener("click", () => playRound(button.dataset.choice));
+    });
+
+    document.getElementById("resetBtn").addEventListener("click", () => {
+      state.wins = 0;
+      state.losses = 0;
+      state.ties = 0;
+      state.rounds = 0;
+      saveScore();
+      renderScore();
+      roundResultEl.textContent = "Score reset.";
+      roundDetailEl.textContent = "Make your next move.";
+    });
+
+    renderScore();
+
+    function playRound(playerChoice) {
+      const computerChoice = choices[Math.floor(Math.random() * choices.length)];
+      const outcome = getOutcome(playerChoice, computerChoice);
+
+      state.rounds += 1;
+      if (outcome === "win") state.wins += 1;
+      if (outcome === "loss") state.losses += 1;
+      if (outcome === "tie") state.ties += 1;
+
+      saveScore();
+      renderScore();
+      renderResult(outcome, playerChoice, computerChoice);
+    }
+
+    function getOutcome(player, computer) {
+      if (player === computer) return "tie";
+
+      const winsAgainst = {
+        rock: "scissors",
+        paper: "rock",
+        scissors: "paper"
+      };
+
+      return winsAgainst[player] === computer ? "win" : "loss";
+    }
+
+    function renderResult(outcome, player, computer) {
+      const labels = {
+        rock: "Rock",
+        paper: "Paper",
+        scissors: "Scissors"
+      };
+
+      if (outcome === "win") roundResultEl.textContent = "You win this round.";
+      if (outcome === "loss") roundResultEl.textContent = "Computer wins this round.";
+      if (outcome === "tie") roundResultEl.textContent = "It is a tie.";
+
+      roundDetailEl.textContent = `You picked ${labels[player]}. Computer picked ${labels[computer]}.`;
+    }
+
+    function renderScore() {
+      winsEl.textContent = state.wins;
+      lossesEl.textContent = state.losses;
+      tiesEl.textContent = state.ties;
+      roundsEl.textContent = state.rounds;
+    }
+
+    function loadScore() {
+      try {
+        const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
+        if (!saved) return { wins: 0, losses: 0, ties: 0, rounds: 0 };
+
+        return {
+          wins: Number(saved.wins) || 0,
+          losses: Number(saved.losses) || 0,
+          ties: Number(saved.ties) || 0,
+          rounds: Number(saved.rounds) || 0
+        };
+      } catch {
+        return { wins: 0, losses: 0, ties: 0, rounds: 0 };
+      }
+    }
+
+    function saveScore() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    }
+  </script>
+</body>
+</html>
